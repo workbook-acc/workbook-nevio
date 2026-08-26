@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Workbook — Logbuch für Arbeitstage</title>
+
+<!-- Google Fonts: Fraunces (Display, für Überschriften/Datum),
+     Inter (Fließtext), IBM Plex Mono (Labels/Meta-Infos) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  /* =========================================================
+     DESIGN TOKENS
+     ========================================================= */
+  :root {
+    --paper-1: #edefe9;
+    --paper-2: #dee3da;
+    --ink: #2c322d;
+    --ink-soft: #5b645b;
+    --moss: #66795f;
+    --moss-deep: #4d5c47;
+    --oak: #a98a5e;
+    --line: rgba(255, 255, 255, 0.6);
+    --glass: rgba(255, 255, 255, 0.42);
+    --glass-strong: rgba(255, 255, 255, 0.62);
+    --shadow: 0 8px 32px rgba(44, 50, 45, 0.12);
+    --shadow-soft: 0 4px 18px rgba(44, 50, 45, 0.08);
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 15% 10%, #f4f5f0 0%, transparent 55%),
+      radial-gradient(circle at 85% 90%, #d7ddd2 0%, transparent 50%),
+      linear-gradient(160deg, var(--paper-1), var(--paper-2));
+    background-attachment: fixed;
+  }
+
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ---------- Kopfbereich ---------- */
+  .app-header { text-align: center; margin-bottom: 36px; }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    display: inline-block;
+    width: 26px;
+    height: 26px;
+    border: 1.5px solid var(--moss-deep);
+    border-radius: 6px;
+    position: relative;
+    transform: rotate(-4deg);
+  }
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    left: 5px; right: 5px; top: 9px;
+    height: 1.5px;
+    background: var(--moss-deep);
+  }
+
+  .brand h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 2.1rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  .brand-sub {
+    margin: 6px 0 0;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+  }
+
+  .header-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  /* ---------- Wochen-Navigation ---------- */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+
+  .week-nav button {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-soft);
+    font-size: 1.1rem;
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .week-nav button:hover { transform: translateY(-1px); background: var(--glass-strong); }
+  .week-nav button:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+
+  .week-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    min-width: 220px;
+    text-align: center;
+  }
+
+  /* ---------- Ledger: die Tageskarten ---------- */
+  .ledger {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    position: relative;
+  }
+
+  .ledger::before {
+    content: "";
+    position: absolute;
+    top: 34px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--ink-soft) 15%, var(--ink-soft) 85%, transparent);
+    opacity: 0.25;
+    z-index: 0;
+  }
+  @media (max-width: 620px) { .ledger::before { display: none; } }
+
+  .day-card {
+    position: relative;
+    z-index: 1;
+    background: var(--glass);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    padding: 20px 18px;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .day-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .day-card:focus-visible { outline: 2px solid var(--moss); outline-offset: 3px; }
+
+  .day-card.is-vacation {
+    opacity: 0.55;
+    cursor: default;
+    background: repeating-linear-gradient(
+      135deg,
+      rgba(169, 138, 94, 0.10),
+      rgba(169, 138, 94, 0.10) 8px,
+      rgba(169, 138, 94, 0.04) 8px,
+      rgba(169, 138, 94, 0.04) 16px
+    );
+  }
+  .day-card.is-vacation:hover { transform: none; }
+  .day-card.is-today { border-color: var(--moss); }
+
+  .day-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .day-weekday {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .day-date {
+    font-family: 'Fraunces', serif;
+    font-size: 1.6rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .day-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+
+  .status-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ink-soft);
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .status-dot.filled { background: var(--moss); border-color: var(--moss-deep); }
+  .status-dot.vacation { background: var(--oak); border-color: var(--oak); }
+
+  .day-preview {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* ---------- Buttons & UI ---------- */
+  .today-jump { text-align: center; margin-top: 32px; }
+  
+  .btn-primary, .btn-ghost {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.86rem;
+    font-weight: 500;
+    padding: 10px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .btn-primary {
+    background: var(--moss-deep);
+    color: #f4f5f0;
+    border-color: var(--moss-deep);
+  }
+  .btn-primary:hover { background: #435340; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--line);
+    backdrop-filter: blur(8px);
+  }
+  .btn-ghost:hover { background: var(--glass); }
+  
+  .btn-ghost.is-danger {
+    color: var(--oak);
+    border-color: rgba(169, 138, 94, 0.5);
+  }
+  .btn-ghost.is-danger:hover { background: rgba(169, 138, 94, 0.1); }
+  .btn-ghost.is-danger.is-active {
+    background: var(--oak);
+    color: #fff;
+    border-color: var(--oak);
+  }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(44, 50, 45, 0.28);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--glass-strong);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px 26px 22px;
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 14px; right: 16px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    font-size: 1.3rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .modal-close:hover { color: var(--ink); }
+
+  .modal-head { margin-bottom: 18px; }
+  .modal-weekday {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--moss-deep);
+    margin-bottom: 2px;
+  }
+  .modal-date {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 16px 0 6px;
+  }
+
+  textarea {
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    resize: vertical;
+    line-height: 1.45;
+  }
+  textarea:focus-visible {
+    outline: 2px solid var(--moss);
+    outline-offset: 1px;
+  }
+
+  .modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .save-hint {
+    margin: 12px 0 0;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+    min-height: 1em;
+  }
+
+  /* Share Modal Styles */
+  .share-box {
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .share-box h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+  .share-box p {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+  }
+
+  .empty-note {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+    padding: 20px;
+  }
+
+  @media (max-width: 480px) {
+    .app { padding: 32px 14px 60px; }
+    .brand h1 { font-size: 1.7rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1>Workbook</h1>
+    </div>
+    <p class="brand-sub">Dein Logbuch für Arbeitstage</p>
+    <div class="header-actions">
+      <button id="openShareModalBtn" class="btn-ghost" style="padding: 6px 16px; font-size: 0.8rem;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+        Für Chef teilen / Backup
+      </button>
+    </div>
+  </header>
+
+  <nav class="week-nav">
+    <button id="prevWeek" aria-label="Vorherige Woche">‹</button>
+    <div class="week-label" id="weekLabel">—</div>
+    <button id="nextWeek" aria-label="Nächste Woche">›</button>
+  </nav>
+
+  <main class="ledger" id="ledger">
+    <!-- Tageskarten werden per JS eingefügt -->
+  </main>
+
+  <div class="today-jump">
+    <button id="todayBtn" class="btn-ghost">Zur aktuellen Woche</button>
+  </div>
+</div>
+
+<!-- Modal: Eintrag bearbeiten -->
+<div class="modal-overlay" id="entryModalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalDate">
+    <button class="modal-close" id="entryModalClose" aria-label="Schließen">×</button>
+    <div class="modal-head">
+      <span class="modal-weekday" id="modalWeekday">Mittwoch</span>
+      <span class="modal-date" id="modalDate">Datum</span>
+    </div>
+
+    <label class="field-label" for="fieldDone">Was ich gemacht habe</label>
+    <textarea id="fieldDone" rows="4" placeholder="z. B. Feature X umgesetzt, Bug in Modul Y behoben …"></textarea>
+
+    <label class="field-label" for="fieldLearned">Was ich gelernt habe</label>
+    <textarea id="fieldLearned" rows="4" placeholder="z. B. neue Debugging-Technik, Erkenntnis aus einem Gespräch …"></textarea>
+
+    <div class="modal-actions">
+      <button id="toggleVacation" class="btn-ghost is-danger">Als Ferien markieren</button>
+      <button id="saveEntry" class="btn-primary">Speichern</button>
+    </div>
+    <p class="save-hint" id="saveHint"></p>
+  </div>
+</div>
+
+<!-- Modal: Teilen / Import -->
+<div class="modal-overlay" id="shareModalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="modal-close" id="shareModalClose" aria-label="Schließen">×</button>
+    <div class="modal-head">
+      <span class="modal-date">Mit Chef teilen</span>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 20px; line-height: 1.5;">
+      Da die App direkt über GitHub Pages (ohne Datenbank) läuft, bleiben die Daten privat bei dir. Du kannst deinen Stand hier aber exportieren und weitergeben.
+    </p>
+
+    <!-- Export Section -->
+    <div class="share-box">
+      <h3>1. Als Link versenden</h3>
+      <p>Schnell und einfach: Generiert einen speziellen Link, der deinen aktuellen Stand enthält.</p>
+      <button id="copyLinkBtn" class="btn-primary" style="width: 100%;">Lese-Link in Zwischenablage kopieren</button>
+    </div>
+
+    <div class="share-box">
+      <h3>2. Als Datei sichern (für viele Einträge)</h3>
+      <p>Wenn du schon viele Wochen geloggt hast, lade eine Backup-Datei herunter und sende sie deinem Chef.</p>
+      <button id="downloadFileBtn" class="btn-ghost" style="width: 100%;">.json Datei herunterladen</button>
+    </div>
+
+    <!-- Import Section (Für den Chef) -->
+    <div class="share-box" style="margin-top: 30px; background: rgba(0,0,0,0.03);">
+      <h3 style="color: var(--moss-deep);">Für den Chef: Daten einlesen</h3>
+      <p>Wähle die .json Datei deines Mitarbeiters aus, um sie in diesem Workbook anzuzeigen.</p>
+      <input type="file" id="importFileInput" accept=".json" style="display: none;">
+      <button id="triggerImportBtn" class="btn-ghost" style="width: 100%; border-style: dashed;">Daten importieren</button>
+    </div>
+    
+    <p class="save-hint" id="shareHint" style="text-align: center; color: var(--moss-deep); font-weight: 500;"></p>
+  </div>
+</div>
+
+<script>
+/* =============================================================
+   WORKBOOK — Client-Side Logbuch mit Share-Funktionen
+   ============================================================= */
+const ACTIVE_WEEKDAYS = [3, 4, 5]; // 3=Mi, 4=Do, 5=Fr
+
+const WEEKDAY_NAMES_SHORT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const WEEKDAY_NAMES_LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+
+const STORAGE_ENTRIES = "workbook.entries";
+const STORAGE_VACATION = "workbook.vacation";
+
+let entries = loadEntries();
+let vacationSet = loadVacationSet();
+let currentWeekStart = startOfWeek(new Date());
+let activeModalKey = null;
+
+// ---- Daten laden & speichern ---------------------------------------
+function loadEntries() { return JSON.parse(localStorage.getItem(STORAGE_ENTRIES)) || {}; }
+function saveEntries(e) { localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(e)); }
+function loadVacationSet() { return new Set(JSON.parse(localStorage.getItem(STORAGE_VACATION)) || []); }
+function saveVacationSet(s) { localStorage.setItem(STORAGE_VACATION, JSON.stringify(Array.from(s))); }
+
+// ---- Datumshilfen ---------------------------------------------------
+function toKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+function startOfWeek(date) {
+  const d = new Date(date);
+  const diff = (d.getDay() === 0 ? -6 : 1 - d.getDay());
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+function formatWeekLabel(weekStart) {
+  const weekEnd = addDays(weekStart, 6);
+  if (weekStart.getMonth() === weekEnd.getMonth()) {
+    return `${weekStart.getDate()}.–${weekEnd.getDate()}. ${MONTH_NAMES[weekEnd.getMonth()]} ${weekEnd.getFullYear()}`;
+  }
+  return `${weekStart.getDate()}. ${MONTH_NAMES[weekStart.getMonth()]} – ${weekEnd.getDate()}. ${MONTH_NAMES[weekEnd.getMonth()]}`;
+}
+function escapeHtml(str) {
+  const div = document.createElement("div"); div.textContent = str; return div.innerHTML;
+}
+
+// ---- Rendering ----------------------------------------------------
+const ledgerEl = document.getElementById("ledger");
+const weekLabelEl = document.getElementById("weekLabel");
+
+function renderWeek() {
+  weekLabelEl.textContent = formatWeekLabel(currentWeekStart);
+  ledgerEl.innerHTML = "";
+  const today = new Date();
+  const daysInWeek = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const day = addDays(currentWeekStart, i);
+    if (ACTIVE_WEEKDAYS.includes(day.getDay())) daysInWeek.push(day);
+  }
+
+  if (daysInWeek.length === 0) {
+    ledgerEl.innerHTML = '<p class="empty-note">Keine Arbeitstage konfiguriert.</p>';
+    return;
+  }
+
+  daysInWeek.forEach((day) => {
+    const key = toKey(day);
+    const entry = entries[key];
+    const isVacation = vacationSet.has(key);
+    const isFilled = !!(entry && (entry.done?.trim() || entry.learned?.trim()));
+
+    const card = document.createElement("button");
+    card.className = `day-card ${isVacation ? 'is-vacation' : ''} ${toKey(day) === toKey(today) ? 'is-today' : ''}`;
+    
+    card.innerHTML = `
+      <div class="day-top"><span class="day-weekday">${WEEKDAY_NAMES_SHORT[day.getDay()]}</span></div>
+      <span class="day-date">${day.getDate()}.</span>
+      <span class="day-status"><span class="status-dot ${isVacation ? 'vacation' : (isFilled ? 'filled' : '')}"></span>${isVacation ? "Ferien" : (isFilled ? "Ausgefüllt" : "Offen")}</span>
+      <span class="day-preview">${isVacation ? "Kein Eintrag nötig." : (entry?.done ? escapeHtml(entry.done) : "Noch nichts eingetragen.")}</span>
+    `;
+    card.addEventListener("click", () => openEntryModal(day));
+    ledgerEl.appendChild(card);
+  });
+}
+
+// ---- Entry Modal Logik ---------------------------------------------
+const entryOverlay = document.getElementById("entryModalOverlay");
+const fieldDone = document.getElementById("fieldDone");
+const fieldLearned = document.getElementById("fieldLearned");
+const toggleVacationBtn = document.getElementById("toggleVacation");
+
+function openEntryModal(day) {
+  activeModalKey = toKey(day);
+  document.getElementById("modalWeekday").textContent = WEEKDAY_NAMES_LONG[day.getDay()];
+  document.getElementById("modalDate").textContent = `${day.getDate()}. ${MONTH_NAMES[day.getMonth()]} ${day.getFullYear()}`;
+  
+  const entry = entries[activeModalKey] || { done: "", learned: "" };
+  fieldDone.value = entry.done || "";
+  fieldLearned.value = entry.learned || "";
+  
+  const isVacation = vacationSet.has(activeModalKey);
+  toggleVacationBtn.textContent = isVacation ? "Ferien-Markierung aufheben" : "Als Ferien markieren";
+  toggleVacationBtn.classList.toggle("is-active", isVacation);
+  fieldDone.disabled = fieldLearned.disabled = isVacation;
+  
+  document.getElementById("saveHint").textContent = "";
+  entryOverlay.classList.add("open");
+}
+
+document.getElementById("entryModalClose").addEventListener("click", () => entryOverlay.classList.remove("open"));
+document.getElementById("saveEntry").addEventListener("click", () => {
+  entries[activeModalKey] = { done: fieldDone.value, learned: fieldLearned.value };
+  saveEntries(entries);
+  document.getElementById("saveHint").textContent = "Gespeichert.";
+  renderWeek();
+});
+
+toggleVacationBtn.addEventListener("click", () => {
+  const isVacation = vacationSet.has(activeModalKey);
+  if (isVacation) vacationSet.delete(activeModalKey);
+  else vacationSet.add(activeModalKey);
+  saveVacationSet(vacationSet);
+  openEntryModal(addDays(new Date(activeModalKey), 0)); // Re-render modal
+  renderWeek();
+});
+
+// ---- Share & Backup Logik ------------------------------------------
+const shareOverlay = document.getElementById("shareModalOverlay");
+const shareHint = document.getElementById("shareHint");
+
+document.getElementById("openShareModalBtn").addEventListener("click", () => {
+  shareHint.textContent = "";
+  shareOverlay.classList.add("open");
+});
+document.getElementById("shareModalClose").addEventListener("click", () => shareOverlay.classList.remove("open"));
+
+function getExportData() {
+  return JSON.stringify({ entries, vacation: Array.from(vacationSet) });
+}
+
+// 1. URL Link generieren
+document.getElementById("copyLinkBtn").addEventListener("click", () => {
+  try {
+    const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(getExportData()))));
+    const url = window.location.href.split('#')[0] + '#data=' + encoded;
+    navigator.clipboard.writeText(url).then(() => {
+      shareHint.textContent = "✓ Link in Zwischenablage kopiert!";
+    });
+  } catch(e) {
+    shareHint.textContent = "Fehler: Datenmenge evtl. zu groß für einen Link. Nutze die Datei.";
+  }
+});
+
+// 2. Datei Herunterladen
+document.getElementById("downloadFileBtn").addEventListener("click", () => {
+  const blob = new Blob([getExportData()], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Workbook_Export_${toKey(new Date())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  shareHint.textContent = "✓ Datei wurde heruntergeladen.";
+});
+
+// 3. Datei Importieren (Für Chef)
+const fileInput = document.getElementById("importFileInput");
+document.getElementById("triggerImportBtn").addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.entries) {
+        entries = data.entries;
+        vacationSet = new Set(data.vacation || []);
+        saveEntries(entries);
+        saveVacationSet(vacationSet);
+        renderWeek();
+        shareHint.textContent = "✓ Daten erfolgreich importiert!";
+      }
+    } catch (err) {
+      shareHint.textContent = "Fehler beim Lesen der Datei.";
+    }
+  };
+  reader.readAsText(file);
+});
+
+// ---- Start & URL Check (beim Laden der Seite) -----------------------
+window.addEventListener("DOMContentLoaded", () => {
+  if (window.location.hash.startsWith('#data=')) {
+    try {
+      const encoded = window.location.hash.replace('#data=', '');
+      const dataStr = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
+      const data = JSON.parse(dataStr);
+      
+      if (data.entries && confirm("Der Link enthält geteilte Workbook-Daten. Möchtest du diese Ansicht laden? (Überschreibt deine aktuelle lokale Ansicht)")) {
+        entries = data.entries;
+        vacationSet = new Set(data.vacation || []);
+        saveEntries(entries);
+        saveVacationSet(vacationSet);
+        alert("Daten geladen!");
+      }
+      history.replaceState(null, null, ' '); // URL säubern
+    } catch(e) {
+      console.error(e);
+      alert("Der Freigabelink ist leider ungültig oder zu lang.");
+    }
+  }
+  renderWeek();
+});
+
+// Navigation
+document.getElementById("prevWeek").addEventListener("click", () => { currentWeekStart = addDays(currentWeekStart, -7); renderWeek(); });
+document.getElementById("nextWeek").addEventListener("click", () => { currentWeekStart = addDays(currentWeekStart, 7); renderWeek(); });
+document.getElementById("todayBtn").addEventListener("click", () => { currentWeekStart = startOfWeek(new Date()); renderWeek(); });
+
+</script>
+</body>
+</html>
